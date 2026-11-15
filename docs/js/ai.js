@@ -55,7 +55,7 @@ function parseJSON(t){
 
 async function callGemini(prompt, files){
   const c = cfg();
-  const model = c.geminiModel || 'gemini-2.5-flash';
+  const model = c.geminiModel || 'gemini-3.8-flash';
   const parts = [{text: prompt}];
   (files||[]).forEach(f=>parts.push({inline_data:{mime_type:f.mime, data:f.data}}));
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(c.apiKey)}`,{
@@ -67,7 +67,17 @@ async function callGemini(prompt, files){
     })
   });
   const j = await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(j.error?.message || ('HTTP '+res.status));
+  if(!res.ok){
+    const msg = j.error?.message || ('HTTP '+res.status);
+    // إذا النموذج انتهى، Google يذكر البديل — نحوّل له تلقائياً ونحفظه
+    const m = msg.match(/use\s+models\/([\w.\-]+)/i);
+    if(m && m[1]!==model && !files?._retried){
+      c.geminiModel = m[1]; window.App.saveSettings();
+      const f = (files||[]).slice(); f._retried = true;
+      return callGemini(prompt, f);
+    }
+    throw new Error(msg);
+  }
   const txt = (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
   if(!txt) throw new Error('لم يرجع رد من Gemini');
   return txt;

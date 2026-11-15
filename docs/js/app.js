@@ -10,8 +10,9 @@ const LS = {
   get(k,d){ try{ const v=localStorage.getItem('doctori.'+k); return v?JSON.parse(v):d; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem('doctori.'+k, JSON.stringify(v)); }catch(e){ toast('تعذر الحفظ — الذاكرة ممتلئة؟'); } }
 };
-const DEF_SET = {nameAr:'',nameEn:'',specAr:'',specEn:'',addr:'',phone:'',hours:'',logo:'',sig:'',provider:'gemini',apiKey:'',geminiModel:'gemini-2.5-flash',claudeModel:'claude-sonnet-5-5',showDx:false};
+const DEF_SET = {nameAr:'',nameEn:'',specAr:'',specEn:'',addr:'',phone:'',hours:'',logo:'',sig:'',provider:'gemini',apiKey:'',geminiModel:'gemini-3.8-flash',claudeModel:'claude-sonnet-5-5',showDx:false};
 let settings = Object.assign({}, DEF_SET, LS.get('settings',{}));
+if(settings.geminiModel==='gemini-2.5-flash') settings.geminiModel=DEF_SET.geminiModel;
 const saveSettings = ()=>LS.set('settings',settings);
 let templates = LS.get('templates', null);
 let customDrugs = LS.get('customDrugs', []);
@@ -561,7 +562,7 @@ $('#bkImport').addEventListener('change', async e=>{
 });
 
 // ================= تشغيل =================
-window.App = {settings:()=>settings};
+window.App = {settings:()=>settings, saveSettings:()=>{ saveSettings(); loadSettingsUI(); }};
 renderAllergyChips(); loadSettingsUI(); renderManage(); renderRx();
 setTimeout(()=>{ const s=$('#splash'); s.style.opacity='0'; setTimeout(()=>s.remove(),500);
   if(!LS.get('agreed',false)) openM('#mDisclaimer'); }, 1300);
