@@ -53,12 +53,15 @@ function parseJSON(t){
   return JSON.parse(t);
 }
 
-async function callGemini(prompt, files){
+const GBASE = 'https://generativelanguage.googleapis.com/v1beta';
+const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+const isBusy = (st,msg)=> st===503 || st===429 || st===500 || /high demand|overloaded|UNAVAILABLE|try again later|RESOURCE_EXHAUSTED/i.test(msg||'');
+
+async function geminiOnce(model, prompt, files){
   const c = cfg();
-  const model = c.geminiModel || 'gemini-3.8-flash';
   const parts = [{text: prompt}];
   (files||[]).forEach(f=>parts.push({inline_data:{mime_type:f.mime, data:f.data}}));
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(c.apiKey)}`,{
+  const res = await fetch(`${GBASE}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(c.apiKey)}`,{
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
       systemInstruction:{parts:[{text:SYSTEM}]},
@@ -67,20 +70,51 @@ async function callGemini(prompt, files){
     })
   });
   const j = await res.json().catch(()=>({}));
-  if(!res.ok){
-    const msg = j.error?.message || ('HTTP '+res.status);
-    // إذا النموذج انتهى، Google يذكر البديل — نحوّل له تلقائياً ونحفظه
-    const m = msg.match(/use\s+models\/([\w.\-]+)/i);
-    if(m && m[1]!==model && !files?._retried){
-      c.geminiModel = m[1]; window.App.saveSettings();
-      const f = (files||[]).slice(); f._retried = true;
-      return callGemini(prompt, f);
-    }
-    throw new Error(msg);
-  }
+  if(!res.ok) return {ok:false, status:res.status, msg: j.error?.message || ('HTTP '+res.status)};
   const txt = (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
-  if(!txt) throw new Error('لم يرجع رد من Gemini');
-  return txt;
+  if(!txt) return {ok:false, status:0, msg:'لم يرجع رد من Gemini'};
+  return {ok:true, txt};
+}
+
+// نماذج بديلة متاحة لهذا المفتاح (عند ازدحام النموذج الأساسي)
+async function geminiAlternatives(exclude){
+  try{
+    const res = await fetch(`${GBASE}/models?pageSize=200&key=${encodeURIComponent(cfg().apiKey)}`);
+    const j = await res.json();
+    const ver = n=>parseFloat((n.match(/(\d+(?:\.\d+)?)/)||[0,0])[1]);
+    return (j.models||[])
+      .filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent'))
+      .map(m=>m.name.replace(/^models\//,''))
+      .filter(n=>/^gemini-/.test(n) && /flash|pro/.test(n) && !/image|tts|audio|live|embed|robotics|computer|native|exp/i.test(n) && n!==exclude)
+      .sort((a,b)=> (/flash/.test(b)-/flash/.test(a)) || (/preview/.test(a)-/preview/.test(b)) || (ver(b)-ver(a)))
+      .slice(0,4);
+  }catch(e){ return []; }
+}
+
+async function callGemini(prompt, files){
+  const c = cfg();
+  let model = c.geminiModel || 'gemini-3.8-flash';
+  let r = await geminiOnce(model, prompt, files);
+  // النموذج انتهى: Google يذكر البديل — نحوّل له ونحفظه
+  if(!r.ok){
+    const m = r.msg.match(/use\s+models\/([\w.\-]+)/i);
+    if(m && m[1]!==model){ model = m[1]; c.geminiModel = model; window.App.saveSettings(); r = await geminiOnce(model, prompt, files); }
+  }
+  // ازدحام: إعادة محاولة ثم نماذج بديلة
+  if(!r.ok && isBusy(r.status, r.msg)){
+    window.App.status && window.App.status('الخدمة مزدحمة، جاري إعادة المحاولة…');
+    await sleep(2500);
+    r = await geminiOnce(model, prompt, files);
+    if(!r.ok && isBusy(r.status, r.msg)){
+      for(const alt of await geminiAlternatives(model)){
+        window.App.status && window.App.status('جاري المحاولة بنموذج بديل: '+alt);
+        const r2 = await geminiOnce(alt, prompt, files);
+        if(r2.ok){ r = r2; break; }
+      }
+    }
+  }
+  if(!r.ok) throw new Error(r.msg);
+  return r.txt;
 }
 
 async function callClaude(prompt, files){
@@ -92,12 +126,16 @@ async function callClaude(prompt, files){
     else content.push({type:'image',source:{type:'base64',media_type:f.mime,data:f.data}});
   });
   content.push({type:'text',text:prompt});
-  const res = await fetch('https://api.anthropic.com/v1/messages',{
+  const send = ()=>fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-api-key':c.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body: JSON.stringify({model, max_tokens:4000, system:SYSTEM, messages:[{role:'user',content}]})
   });
-  const j = await res.json().catch(()=>({}));
+  let res = await send(); let j = await res.json().catch(()=>({}));
+  for(let i=0; i<2 && !res.ok && (res.status===529||isBusy(res.status, j.error?.message)); i++){
+    window.App.status && window.App.status('الخدمة مزدحمة، جاري إعادة المحاولة…');
+    await sleep(3000*(i+1)); res = await send(); j = await res.json().catch(()=>({}));
+  }
   if(!res.ok) throw new Error(j.error?.message || ('HTTP '+res.status));
   return (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
 }

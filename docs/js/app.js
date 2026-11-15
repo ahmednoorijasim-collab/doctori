@@ -158,7 +158,9 @@ function aiErr(e){
   if(e.message==='NO_KEY'){ toast('أضف مفتاح الذكاء الاصطناعي من الإعدادات أولاً'); go('set'); $('#sKey').focus(); return; }
   let m = e.message||String(e);
   if(/API key|API_KEY|invalid x-api-key|authentication/i.test(m)) m='المفتاح غير صحيح — راجع الإعدادات';
-  else if(/quota|rate|429|overloaded/i.test(m)) m='تم تجاوز حد الاستخدام مؤقتاً، حاول بعد دقيقة';
+  else if(/high demand|overloaded|UNAVAILABLE|try again later|503|529/i.test(m)) m='خوادم الذكاء الاصطناعي مزدحمة حالياً، حاول بعد دقيقة';
+  else if(/credit balance|billing|purchase credits/i.test(m)) m='رصيد حساب Claude غير كافٍ — اشحن من صفحة Billing';
+  else if(/quota|rate|429/i.test(m)) m='تم تجاوز حد الاستخدام مؤقتاً، حاول بعد دقيقة';
   else if(/Failed to fetch|NetworkError|Load failed/i.test(m)) m='تعذر الاتصال — تأكد من الإنترنت';
   else if(/JSON/i.test(m)) m='الرد غير مكتمل، حاول مرة ثانية';
   toast('⚠️ '+m);
@@ -562,7 +564,7 @@ $('#bkImport').addEventListener('change', async e=>{
 });
 
 // ================= تشغيل =================
-window.App = {settings:()=>settings, saveSettings:()=>{ saveSettings(); loadSettingsUI(); }};
+window.App = {status:(t)=>toast(t), settings:()=>settings, saveSettings:()=>{ saveSettings(); loadSettingsUI(); }};
 renderAllergyChips(); loadSettingsUI(); renderManage(); renderRx();
 setTimeout(()=>{ const s=$('#splash'); s.style.opacity='0'; setTimeout(()=>s.remove(),500);
   if(!LS.get('agreed',false)) openM('#mDisclaimer'); }, 1300);
