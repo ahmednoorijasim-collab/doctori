@@ -1,0 +1,7 @@
+{
+  "appId": "com.ahmednoori.doctori",
+  "appName": "دكتوري",
+  "webDir": "docs",
+  "android": { "allowMixedContent": false },
+  "server": { "androidScheme": "https" }
+}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>دكتوري</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="splash"><div class="lg">⚕️</div><h1>دكتوري</h1><p>مساعدك الطبي الذكي</p><div class="cr">Eng. Ahmed Noori</div></div>
+
+<header class="top">
+  <h1><span class="logo">⚕️</span>دكتوري</h1>
+  <button class="btn-new" id="btnNew">＋ مريض جديد</button>
+</header>
+
+<main>
+<!-- ================= المريض ================= -->
+<section class="tab on" id="tab-patient">
+  <div class="card">
+    <h2>👤 معلومات المريض</h2>
+    <label class="f">الاسم (يظهر بالوصفة فقط ولا يُرسل للذكاء الاصطناعي)</label>
+    <input type="text" id="pName" placeholder="اسم المريض">
+    <div class="row">
+      <div><label class="f">العمر (سنة)</label><input type="number" id="pAgeY" inputmode="numeric" min="0" max="120"></div>
+      <div><label class="f">+ أشهر</label><input type="number" id="pAgeM" inputmode="numeric" min="0" max="11"></div>
+      <div><label class="f">الوزن (كغم)</label><input type="number" id="pWeight" inputmode="decimal" step="0.1"></div>
+    </div>
+    <label class="f">الجنس</label>
+    <div class="seg" id="pSex"><button data-v="male">ذكر</button><button data-v="female">أنثى</button></div>
+    <div id="femaleBox" style="display:none">
+      <div class="toggle"><span>🤰 حامل</span><label class="sw"><input type="checkbox" id="pPreg"><span></span></label></div>
+      <div id="pregWeeksBox" style="display:none"><input type="number" id="pPregW" placeholder="عمر الحمل بالأسابيع (اختياري)" inputmode="numeric"></div>
+      <div class="toggle"><span>🍼 مرضعة</span><label class="sw"><input type="checkbox" id="pBreast"><span></span></label></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⚠️ الحساسية</h2>
+    <div class="chips" id="allergyChips"></div>
+    <label class="f">حساسية أخرى</label>
+    <input type="text" id="pAllergyText" placeholder="مثلاً: Ceftriaxone، بيض…">
+  </div>
+
+  <div class="card">
+    <h2>🩺 التاريخ المرضي</h2>
+    <label class="f">أمراض مزمنة</label>
+    <input type="text" id="pChronic" placeholder="سكري، ضغط، ربو، أمراض كلى…">
+    <label class="f">أدوية يأخذها حالياً</label>
+    <textarea id="pMeds" placeholder="مثلاً: Glucophage 850، Concor 5، Aspirin…" style="min-height:60px"></textarea>
+    <div class="muted">التطبيق يفحص تداخل هذه الأدوية مع الوصفة تلقائياً.</div>
+  </div>
+  <button class="btn block big" data-go="dx">التالي: الأعراض والتشخيص ←</button>
+</section>
+
+<!-- ================= التشخيص ================= -->
+<section class="tab" id="tab-dx">
+  <div class="card">
+    <h2>📊 العلامات الحيوية</h2>
+    <div class="grid3">
+      <div><label class="f">الحرارة °C</label><input type="number" id="vTemp" step="0.1" inputmode="decimal"></div>
+      <div><label class="f">الضغط</label><input type="text" id="vBp" placeholder="120/80" inputmode="numeric" class="ltr"></div>
+      <div><label class="f">النبض</label><input type="number" id="vPulse" inputmode="numeric"></div>
+      <div><label class="f">التنفس/د</label><input type="number" id="vRr" inputmode="numeric"></div>
+      <div><label class="f">الأوكسجين %</label><input type="number" id="vSpo2" inputmode="numeric"></div>
+      <div><label class="f">السكر العشوائي</label><input type="number" id="vSugar" inputmode="numeric"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lblrow"><h2 style="margin:0">🗒️ الأعراض والقصة المرضية</h2><button class="mic" data-mic="dSymptoms" style="display:none">🎤 تكلّم</button></div>
+    <textarea id="dSymptoms" placeholder="مثلاً: حرارة 3 أيام، ألم بلع، سعال جاف، بدون ضيق نفس…" style="margin-top:8px"></textarea>
+    <div class="lblrow" style="margin-top:8px"><label class="f" style="margin:0">نتائج الفحص السريري</label><button class="mic" data-mic="dExam" style="display:none">🎤 تكلّم</button></div>
+    <textarea id="dExam" placeholder="مثلاً: لوزتين متضخمة مع إفرازات، غدد رقبة مؤلمة…" style="min-height:60px;margin-top:4px"></textarea>
+    <div class="muted" id="micHint">💡 تكدر تستخدم زر المايك بالكيبورد حتى تكتب بالصوت.</div>
+  </div>
+
+  <div class="card">
+    <h2>📎 المرفقات (تحاليل، صور، تقارير)</h2>
+    <div class="row">
+      <label class="btn ghost"><input type="file" id="fileCam" accept="image/*" capture="environment" hidden>📷 تصوير</label>
+      <label class="btn ghost"><input type="file" id="filePick" accept="image/*,application/pdf" multiple hidden>📁 اختيار ملف</label>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="note warn">🔒 غطِّ اسم المريض بالصورة قبل التصوير إن أمكن. المرفقات تُرسل للتحليل فقط وتُمسح مع "مريض جديد".</div>
+  </div>
+
+  <button class="btn block big" id="btnAnalyze">🤖 تحليل الحالة بالذكاء الاصطناعي</button>
+  <div class="muted" style="text-align:center;margin:6px 0 12px">الاقتراحات للمساعدة فقط — القرار النهائي للطبيب</div>
+
+  <div id="aiOut"></div>
+</section>
+
+<!-- ================= الوصفة ================= -->
+<section class="tab" id="tab-rx">
+  <div class="card">
+    <h2>🔎 التشخيص</h2>
+    <input type="text" id="rxDx" class="ltr" placeholder="Diagnosis (e.g. Acute tonsillitis)">
+    <div class="toggle"><span>إظهار التشخيص بالوصفة</span><label class="sw"><input type="checkbox" id="rxShowDx"><span></span></label></div>
+  </div>
+
+  <div class="card">
+    <h2>💊 الأدوية</h2>
+    <input type="text" id="drugSearch" placeholder="ابحث باسم الدواء أو الاسم التجاري… (Amox, Augmentin, بنادول)">
+    <div class="search-res" id="searchRes"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost small" id="btnTpl">📋 القوالب</button>
+      <button class="btn ghost small" id="btnCustom">＋ دواء غير موجود</button>
+    </div>
+    <div id="rxList" style="margin-top:10px"></div>
+    <div class="muted" id="rxEmpty">لا توجد أدوية بعد — ابحث وأضف.</div>
+  </div>
+
+  <div class="card warns" id="warnCard" style="display:none">
+    <h2>🛡️ تنبيهات الأمان</h2>
+    <div id="warnList"></div>
+  </div>
+
+  <div class="card">
+    <h2>📝 نصائح وموعد المراجعة</h2>
+    <textarea id="rxAdvice" placeholder="مثلاً: الإكثار من السوائل، الراحة، مراجعة الطوارئ عند ضيق النفس…" style="min-height:60px"></textarea>
+    <label class="f">المراجعة بعد</label>
+    <input type="text" id="rxFollow" placeholder="مثلاً: 5 أيام">
+  </div>
+
+  <button class="btn block ghost" id="btnAiCheck" style="margin-bottom:8px">🤖 فحص الوصفة بالذكاء الاصطناعي</button>
+  <div id="aiCheckOut"></div>
+  <div class="row">
+    <button class="btn big" id="btnPdf">📄 إنشاء الوصفة PDF</button>
+    <button class="btn big ghost" id="btnSaveTpl" style="flex:.6">💾 حفظ كقالب</button>
+  </div>
+</section>
+
+<!-- ================= الإعدادات ================= -->
+<section class="tab" id="tab-set">
+  <div class="card">
+    <h2>👨‍⚕️ معلومات الطبيب (للترويسة)</h2>
+    <label class="f">الاسم بالعربي</label><input type="text" id="sNameAr" placeholder="د. …">
+    <label class="f">الاسم بالإنكليزي</label><input type="text" id="sNameEn" class="ltr" placeholder="Dr. …">
+    <label class="f">الاختصاص والشهادات (بالعربي، سطر لكل معلومة)</label><textarea id="sSpecAr" style="min-height:56px" placeholder="طبيب عام&#10;بكالوريوس طب وجراحة عامة"></textarea>
+    <label class="f">الاختصاص بالإنكليزي</label><textarea id="sSpecEn" class="ltr" style="min-height:56px" placeholder="General Practitioner&#10;M.B.Ch.B."></textarea>
+    <label class="f">عنوان العيادة</label><input type="text" id="sAddr" placeholder="خانقين - …">
+    <div class="row">
+      <div><label class="f">رقم الهاتف</label><input type="tel" id="sPhone" class="ltr"></div>
+      <div><label class="f">أوقات الدوام</label><input type="text" id="sHours" placeholder="4 – 9 مساءً"></div>
+    </div>
+    <div class="row">
+      <div><label class="f">الشعار (اختياري)</label><input type="file" id="sLogo" accept="image/*"><img id="sLogoPrev" class="imgprev" style="display:none"><button class="btn red small" id="sLogoDel" style="display:none">حذف</button></div>
+      <div><label class="f">التوقيع / الختم</label><input type="file" id="sSig" accept="image/*"><img id="sSigPrev" class="imgprev" style="display:none"><button class="btn red small" id="sSigDel" style="display:none">حذف</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🤖 الذكاء الاصطناعي</h2>
+    <label class="f">المزوّد</label>
+    <div class="seg" id="sProvider"><button data-v="gemini">Google Gemini</button><button data-v="claude">Claude</button></div>
+    <div class="note" id="keyHelp"></div>
+    <label class="f">مفتاح الـ API (يُحفظ على هذا الموبايل فقط)</label>
+    <div class="row"><input type="password" id="sKey" class="ltr" placeholder="ألصق المفتاح هنا"><button class="btn ghost small" id="sKeyShow" style="flex:none">👁️</button></div>
+    <label class="f">اسم النموذج (اتركه كما هو إذا ما تعرف)</label>
+    <input type="text" id="sModel" class="ltr">
+    <button class="btn ghost block" id="sTest" style="margin-top:10px">اختبار الاتصال</button>
+  </div>
+
+  <div class="card">
+    <h2>📋 قوالبي</h2>
+    <div class="tpl-list" id="tplManage"></div>
+  </div>
+  <div class="card">
+    <h2>💊 أدويتي المضافة</h2>
+    <div class="tpl-list" id="customManage"></div>
+  </div>
+
+  <div class="card">
+    <h2>💾 نسخة احتياطية</h2>
+    <div class="muted">تحفظ معلومات الطبيب والقوالب والأدوية المضافة (بدون أي بيانات مرضى).</div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost" id="bkExport">تصدير</button>
+      <label class="btn ghost"><input type="file" id="bkImport" accept="application/json,.json" hidden>استيراد</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>ℹ️ عن التطبيق</h2>
+    <p class="muted" style="margin:0">دكتوري أداة مساعدة للطبيب المرخص فقط ولا تُغني عن الحكم السريري. التطبيق لا يحفظ أي بيانات للمرضى، وكل شي ينمسح عند "مريض جديد" أو إغلاق التطبيق. الجرعات المقترحة يجب أن يراجعها الطبيب دائماً.</p>
+  </div>
+  <div class="credit">Eng. Ahmed Noori</div>
+</section>
+</main>
+
+<nav class="bottom">
+  <button data-go="patient" class="on"><span class="i">👤</span>المريض</button>
+  <button data-go="dx"><span class="i">🩺</span>التشخيص</button>
+  <button data-go="rx"><span class="i">💊</span>الوصفة<span class="badge" id="rxBadge" style="display:none">0</span></button>
+  <button data-go="set"><span class="i">⚙️</span>الإعدادات</button>
+</nav>
+
+<!-- قوالب -->
+<div class="modal" id="mTpl"><div class="box">
+  <h2>📋 القوالب</h2>
+  <div class="tpl-list" id="tplList"></div>
+  <button class="btn ghost block" data-close>إغلاق</button>
+</div></div>
+
+<!-- دواء مخصص -->
+<div class="modal" id="mCustom"><div class="box">
+  <h2>＋ دواء غير موجود بالقائمة</h2>
+  <label class="f">اسم الدواء (علمي أو تجاري)</label><input type="text" id="cName" class="ltr">
+  <label class="f">التركيز والشكل</label><input type="text" id="cStr" class="ltr" placeholder="500 mg Tab">
+  <label class="f">طريقة الاستعمال</label><input type="text" id="cSig" placeholder="حبة كل 8 ساعات">
+  <label class="f">المدة</label><input type="text" id="cDur" placeholder="7 أيام">
+  <div class="toggle"><span>احفظه بقائمة أدويتي</span><label class="sw"><input type="checkbox" id="cSave" checked><span></span></label></div>
+  <div class="row" style="margin-top:10px"><button class="btn" id="cAdd">إضافة</button><button class="btn ghost" data-close>إلغاء</button></div>
+</div></div>
+
+<!-- معاينة الوصفة -->
+<div class="modal" id="mPreview"><div class="box">
+  <h2>📄 الوصفة جاهزة</h2>
+  <img id="previewImg" alt="">
+  <div class="row" style="margin-top:10px">
+    <button class="btn big" id="btnShare">📤 مشاركة / طباعة</button>
+    <button class="btn big ghost" id="btnDownload" style="flex:.7">⬇️ حفظ</button>
+  </div>
+  <button class="btn ghost block" data-close style="margin-top:8px">رجوع للتعديل</button>
+</div></div>
+
+<!-- تنبيه أول تشغيل -->
+<div class="modal" id="mDisclaimer"><div class="box">
+  <h2>⚕️ أهلاً بك في دكتوري</h2>
+  <p>هذا التطبيق <b>أداة مساعدة للطبيب المرخص فقط</b>:</p>
+  <ul class="plain">
+    <li>اقتراحات التشخيص والعلاج من الذكاء الاصطناعي قد تكون خاطئة، والقرار النهائي دائماً للطبيب.</li>
+    <li>لا يحفظ التطبيق أي بيانات للمرضى.</li>
+    <li>المرفقات والأعراض (بدون اسم المريض) تُرسل لمزوّد الذكاء الاصطناعي للتحليل فقط.</li>
+    <li>راجع الجرعات دائماً، خصوصاً للأطفال والحوامل وكبار السن.</li>
+  </ul>
+  <button class="btn block big" id="btnAgree">فهمت، أنا طبيب وأتحمل القرار</button>
+</div></div>
+
+<div id="rxSheetWrap"><div class="rx" id="rxSheet"></div></div>
+<div id="printArea" style="display:none"></div>
+<div class="toast" id="toast"></div>
+
+<script src="lib/html2canvas.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="js/drugs.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
