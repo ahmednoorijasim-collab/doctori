@@ -40,7 +40,7 @@ resetState();
 
 // ================= أدوات =================
 let toastT;
-function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2600); }
+function toast(m, ms){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'), ms || (/⚠️/.test(m)?7000:2600)); }
 function openM(id){ $(id).classList.add('on'); }
 function closeM(el){ el.closest('.modal').classList.remove('on'); }
 $$('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m || e.target.hasAttribute('data-close')) m.classList.remove('on'); }));
@@ -157,7 +157,7 @@ $('#thumbs').addEventListener('click',e=>{ const b=e.target.closest('[data-del]'
 function aiErr(e){
   if(e.message==='NO_KEY'){ toast('أضف مفتاح الذكاء الاصطناعي من الإعدادات أولاً'); go('set'); $('#sKey').focus(); return; }
   let m = e.message||String(e);
-  if(/API key|API_KEY|invalid x-api-key|authentication/i.test(m)) m='المفتاح غير صحيح — راجع الإعدادات';
+  if(/API key|API_KEY|invalid x-api-key|authentication|UNAUTHENTICATED|ACCESS_TOKEN|PERMISSION_DENIED/i.test(m)) m='المفتاح غير صحيح — راجع الإعدادات';
   else if(/high demand|overloaded|UNAVAILABLE|try again later|503|529/i.test(m)) m='خوادم الذكاء الاصطناعي مزدحمة حالياً، حاول بعد دقيقة';
   else if(/credit balance|billing|purchase credits/i.test(m)) m='رصيد حساب Claude غير كافٍ — اشحن من صفحة Billing';
   else if(/quota|rate|429/i.test(m)) m='تم تجاوز حد الاستخدام مؤقتاً، حاول بعد دقيقة';
@@ -515,6 +515,18 @@ Object.entries(SMAP).forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{ s
 $('#sModel').addEventListener('input',e=>{ const v=e.target.value.trim(); if(settings.provider==='claude') settings.claudeModel=v||DEF_SET.claudeModel; else settings.geminiModel=v||DEF_SET.geminiModel; saveSettings(); });
 $$('#sProvider button').forEach(b=>b.addEventListener('click',()=>{ settings.provider=b.dataset.v; saveSettings(); loadSettingsUI(); }));
 $('#sKeyShow').addEventListener('click',()=>{ const k=$('#sKey'); k.type = k.type==='password'?'text':'password'; });
+$('#sFind').addEventListener('click', async ()=>{
+  if(settings.provider!=='gemini'){ toast('هذا الزر لـ Gemini فقط'); return; }
+  const btn=$('#sFind'), out=$('#sFindOut'); busy(btn,true,'جاري الفحص…'); out.innerHTML='';
+  try{
+    const res = await window.AI.findWorkingGemini(m=>{ out.innerHTML += `<div class="ltr">⏳ ${esc(m)}…</div>`; });
+    const why = r=> r.status===503||/demand|overload/i.test(r.msg)?'مزدحم': r.status===429?'تجاوز الحد المجاني': r.status===401||r.status===403?'المفتاح مرفوض': r.status===404?'غير متاح':'خطأ';
+    out.innerHTML = res.map(r=>`<div><span class="ltr">${esc(r.model)}</span>: ${r.ok?'✅ يشتغل — تم اختياره':'❌ '+why(r)}</div>`).join('') ||
+      '<div>❌ ما لكيت نماذج متاحة لهذا المفتاح</div>';
+    if(res.some(r=>r.ok)) toast('✅ تم اختيار نموذج يشتغل'); else toast('⚠️ كل النماذج مزدحمة أو مرفوضة حالياً');
+  }catch(e){ aiErr(e); }
+  busy(btn,false);
+});
 $('#sTest').addEventListener('click', async ()=>{
   const btn=$('#sTest'); busy(btn,true,'جاري الاختبار…');
   try{ await window.AI.testKey(); toast('✅ الاتصال يعمل'); }catch(e){ aiErr(e); }

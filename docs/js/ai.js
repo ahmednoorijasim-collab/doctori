@@ -87,7 +87,7 @@ async function geminiAlternatives(exclude){
       .map(m=>m.name.replace(/^models\//,''))
       .filter(n=>/^gemini-/.test(n) && /flash|pro/.test(n) && !/image|tts|audio|live|embed|robotics|computer|native|exp/i.test(n) && n!==exclude)
       .sort((a,b)=> (/flash/.test(b)-/flash/.test(a)) || (/preview/.test(a)-/preview/.test(b)) || (ver(b)-ver(a)))
-      .slice(0,4);
+      .slice(0,8);
   }catch(e){ return []; }
 }
 
@@ -102,9 +102,12 @@ async function callGemini(prompt, files){
   }
   // ازدحام: إعادة محاولة ثم نماذج بديلة
   if(!r.ok && isBusy(r.status, r.msg)){
-    window.App.status && window.App.status('الخدمة مزدحمة، جاري إعادة المحاولة…');
-    await sleep(2500);
-    r = await geminiOnce(model, prompt, files);
+    for(const w of [3000,6000]){
+      window.App.status && window.App.status('الخدمة مزدحمة، جاري إعادة المحاولة…');
+      await sleep(w);
+      r = await geminiOnce(model, prompt, files);
+      if(r.ok || !isBusy(r.status, r.msg)) break;
+    }
     if(!r.ok && isBusy(r.status, r.msg)){
       for(const alt of await geminiAlternatives(model)){
         window.App.status && window.App.status('جاري المحاولة بنموذج بديل: '+alt);
@@ -165,5 +168,19 @@ async function testKey(){
   return call('Reply with JSON {"ok":true}', []);
 }
 
-window.AI = {analyze, checkRx, testKey};
+// يجرب كل نماذج Gemini المتاحة للمفتاح ويحفظ أول واحد يشتغل
+async function findWorkingGemini(onStep){
+  const c = cfg(); if(!c.apiKey) throw new Error('NO_KEY');
+  const list = [c.geminiModel].concat(await geminiAlternatives(c.geminiModel)).filter(Boolean);
+  const results = [];
+  for(const m of list){
+    onStep && onStep(m);
+    const r = await geminiOnce(m, 'Reply with JSON {"ok":true}', []);
+    results.push({model:m, ok:r.ok, status:r.status, msg:r.ok?'':r.msg});
+    if(r.ok){ c.geminiModel = m; window.App.saveSettings(); break; }
+  }
+  return results;
+}
+
+window.AI = {analyze, checkRx, testKey, findWorkingGemini};
 })();
